@@ -1,0 +1,7 @@
+# Never commit credentials or local Deep Code configurations
+.deepcode/
+settings.json
+*.env
+.env
+.env.*
+node_modules/
