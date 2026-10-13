@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 if [[ ! -f /etc/os-release ]]; then echo "Cannot detect operating system" >&2; exit 1; fi
 . /etc/os-release
-if [[ "${ID:-}" != "debian" || ! " ${VERSION_ID:-} " =~ " (12|13) " ]]; then
+if [[ "${ID:-}" != "debian" || ( "${VERSION_ID:-}" != "12" && "${VERSION_ID:-}" != "13" ) ]]; then
   echo "Only Debian 12/13 is supported (got ${PRETTY_NAME:-unknown})." >&2
   exit 1
 fi
@@ -18,29 +18,15 @@ NPM_REGISTRY="https://registry.npmmirror.com"
 export DEBIAN_FRONTEND=noninteractive
 
 echo "[1/5] Backing up and switching Debian APT mirrors..."
-python3 - <<'PY' || {
-import pathlib, re, shutil, datetime
-root = pathlib.Path("/etc/apt")
-paths = [root / "sources.list", *sorted((root / "sources.list.d").glob("*.sources")), *sorted((root / "sources.list.d").glob("*.list"))]
-stamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-changes = 0
-for path in paths:
-    if not path.is_file():
-        continue
-    old = path.read_text()
-    new = old
-    new = re.sub(r"https?://(?:deb|ftp|security).debian.org/debian-security/?", "https://mirrors.tuna.tsinghua.edu.cn/debian-security/", new)
-    new = re.sub(r"https?://(?:deb|ftp).debian.org/debian/?", "https://mirrors.tuna.tsinghua.edu.cn/debian/", new)
-    if new != old:
-        shutil.copy2(path, str(path) + ".backup-" + stamp)
-        path.write_text(new)
-        changes += 1
-print("Updated APT source files:", changes)
-PY
-  echo "Mirror switch failed; check whether python3 is installed." >&2
-  exit 1
-}
-# Fresh Debian images normally include python3? Not guaranteed: shell needs to bootstrap!
+BACKUP_DIR="/root/apt-sources-backup-$(date +%Y%m%d%H%M%S)"
+mkdir -p "$BACKUP_DIR"
+cp -a /etc/apt/sources.list "$BACKUP_DIR/" 2>/dev/null || true
+cp -a /etc/apt/sources.list.d "$BACKUP_DIR/" 2>/dev/null || true
+while IFS= read -r -d '' src; do
+  sed -i -E \
+    -e 's#https?://(deb|ftp|security)[.]debian[.]org/debian-security/?#https://mirrors.tuna.tsinghua.edu.cn/debian-security/#g' \
+    -e 's#https?://(deb|ftp)[.]debian[.]org/debian/?#https://mirrors.tuna.tsinghua.edu.cn/debian/#g' "$src"
+done < <(find /etc/apt -maxdepth 2 -type f \( -name 'sources.list' -o -name '*.sources' -o -name '*.list' \) -print0)
 apt-get update
 apt-get install -y ca-certificates curl git xz-utils python3 nano build-essential
 
