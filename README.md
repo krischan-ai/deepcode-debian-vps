@@ -1,36 +1,61 @@
 # Deep Code · 国内 Debian VPS 一键安装
 
-本分支 `china-mirrors` 面向国内网络环境，支持 **Debian 12 / 13**（amd64 / arm64 / armhf），默认模型为 `deepseek-flash`。
+本分支 `china-mirrors` 针对 **Debian 12/13**（x86_64、ARM64、armhf）国内服务器，默认模型 `deepseek-flash`。
 
-## 一键安装
+## 一键安装（推荐 GitHub 加速）
 
-在 root 终端执行：
-
-```bash
-curl -fsSLo /tmp/deepcode-install-cn.sh https://raw.githubusercontent.com/krischan-ai/deepcode-debian-vps/china-mirrors/install.sh && bash /tmp/deepcode-install-cn.sh
-```
-
-**注意：仓库如果仍为 Private，匿名访问 raw.githubusercontent.com 会返回 404；国内网络也可能无法连通 GitHub Raw。** 你可以通过可访问 GitHub 的电脑下载 [install.sh](./install.sh) 后通过 SCP 传到 VPS 执行，或在服务器已安装且登录 `gh` 的情况下运行：
+以 root 登录 VPS，复制整条命令：
 
 ```bash
-gh api -H 'Accept: application/vnd.github.raw+json' repos/krischan-ai/deepcode-debian-vps/contents/install.sh?ref=china-mirrors > /tmp/deepcode-install-cn.sh
-bash /tmp/deepcode-install-cn.sh
+curl -fL --retry 3 -o /tmp/deepcode-install-cn.sh 'https://gh-proxy.com/https://raw.githubusercontent.com/krischan-ai/deepcode-debian-vps/china-mirrors/install.sh' && bash /tmp/deepcode-install-cn.sh
 ```
 
-## 国内镜像配置
+直连备用命令：
 
-| 用途 | 镜像 | 说明 |
-| --- | --- | --- |
-| Debian APT | 清华 TUNA | 自动将官方 Debian/安全更新源地址替换为清华镜像，保留其他第三方源 |
-| Node.js 22 | npmmirror | 下载最新 22.x 的 Linux 预编译压缩包并校验 SHA-256 |
-| npm 依赖 | npmmirror | 安装 `@vegamo/deepcode-cli` 时使用 `https://registry.npmmirror.com` |
-| DeepSeek API | 官方 | `https://api.deepseek.com`，模型 `deepseek-flash` |
+```bash
+curl -fL --retry 3 -o /tmp/deepcode-install-cn.sh 'https://raw.githubusercontent.com/krischan-ai/deepcode-debian-vps/china-mirrors/install.sh' && bash /tmp/deepcode-install-cn.sh
+```
 
-安装前会将原有 APT 配置备份到 `/root/apt-sources-backup-时间戳/`。清华镜像的安全更新同步可能慢于 Debian 官方安全源，需要自行衡量同步延迟。Node.js/npm 和第三方包镜像也可能有同步延迟。
+**权限提醒：** 仓库必须是 **Public** 才能通过上述匿名 URL 获取脚本。Private 仓库不能简单通过公开加速站访问；不要向第三方代理传送 GitHub Token。如需保持 Private，可在已认证的电脑上下载脚本再使用 `scp` 上传至 VPS，或用已登录的 `gh api` 获取文件。
 
-## 配置及日常启动
+在通过第三方代理运行脚本之前，建议先查看其内容；请勿无条件执行来自未信任代理的 Shell 脚本。
 
-安装时交互式输入 DeepSeek API Key，密钥不回显，存储在 `~/.deepcode/settings.json`，文件权限为 `600`，**不会提交到 GitHub**。
+## 国内镜像
+
+| 安装环节 | 服务 |
+| --- | --- |
+| GitHub Raw 脚本下载 | [gh-proxy.com](https://gh-proxy.com/) |
+| Debian APT 和安全更新 | [清华 TUNA](https://mirrors.tuna.tsinghua.edu.cn/help/debian/) |
+| Node.js 22 二进制 | npmmirror（下载并校验 SHA-256） |
+| npm 包 | `https://registry.npmmirror.com` |
+| DeepSeek 模型 | 官方 API，`deepseek-flash` |
+
+脚本会备份原 APT 源到 `/root/apt-sources-backup-时间戳/`，安装基础工具、Node.js 和 Deep Code，提示交互式输入 API Key，然后启动 `deepcode`。
+
+## GitHub 下载和克隆加速
+
+下载任意公开 Raw 文件：
+
+```bash
+curl -fL -o file.sh 'https://gh-proxy.com/https://raw.githubusercontent.com/OWNER/REPO/BRANCH/file.sh'
+```
+
+克隆公开仓库可尝试：
+
+```bash
+git clone 'https://gh-proxy.com/https://github.com/OWNER/REPO.git'
+```
+
+注意第三方代理对 Git Clone 的支持和稳定性可能不同；加速不等于匿名访问 Private 仓库。为避免影响其他 Git 操作，本安装脚本**不会修改全局 Git 配置或强制代理所有 GitHub 请求**。
+
+## 日常启动和配置
+
+```bash
+cd ~/workspace
+deepcode
+```
+
+`~/.deepcode/settings.json` 内容：
 
 ```json
 {
@@ -44,19 +69,14 @@ bash /tmp/deepcode-install-cn.sh
 }
 ```
 
-以后启动：
+密钥仅在 VPS 本地输入，文件权限 `600`。注意 API 服务是否支持指定模型。
 
-```bash
-cd ~/workspace
-deepcode
-```
+## 常见问题
 
-## 风险及排查
+- GitHub 下载 404：检查仓库 Public、分支路径是否正确。
+- 代理连接失败：改用直连、换网络，或先在本地下载再通过 SCP 上传。
+- npm 镜像未同步：稍后重试或临时换回官方 npm registry。
+- APT 镜像更新滞后：安全更新可能落后于官方源，生产环境请评估。
+- 使用第三方 GitHub 加速服务时需考虑文件完整性与服务可信度。
 
-- `curl: (7)` 或 `curl: (28)`：镜像或 GitHub Raw 访问失败，确认网络连通性。
-- `404`：先检查仓库是否为 Public，以及所选文件路径和分支是否正确。
-- `npm ERR!`：可能是包在 npm 国内镜像尚未同步；可以手动切回官方 registry。
-- `model not found`：检查 API 服务实际支持的模型 ID。
-- 默认直接修改系统的 APT 源，请先检查 [install.sh](./install.sh)；生产环境建议快照备份后再运行。
-
-参考：[清华 Debian 镜像帮助](https://mirrors.tuna.tsinghua.edu.cn/help/debian/) · [清华 Debian Security 镜像帮助](https://mirrors.tuna.tsinghua.edu.cn/help/debian-security/)
+参考：[gh-proxy.com 使用文档](https://gh-proxy.com/docs/github-accelerator)。
