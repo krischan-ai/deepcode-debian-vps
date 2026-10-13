@@ -1,33 +1,36 @@
-# Deep Code · Debian VPS 一键安装
+# Deep Code · 国内 Debian VPS 一键安装
 
-适用于全新 **Debian 12 / Debian 13** VPS，默认使用 **DeepSeek V4.1 Flash**（API 模型 ID：`deepseek-flash`）。
+本分支 `china-mirrors` 面向国内网络环境，支持 **Debian 12 / 13**（amd64 / arm64 / armhf），默认模型为 `deepseek-flash`。
 
 ## 一键安装
 
-以 `root` 登录 VPS 后执行：
+在 root 终端执行：
 
 ```bash
-curl -fsSLo /tmp/deepcode-install.sh https://raw.githubusercontent.com/krischan-ai/deepcode-debian-vps/main/install.sh && bash /tmp/deepcode-install.sh
+curl -fsSLo /tmp/deepcode-install-cn.sh https://raw.githubusercontent.com/krischan-ai/deepcode-debian-vps/china-mirrors/install.sh && bash /tmp/deepcode-install-cn.sh
 ```
 
-> **仓库访问权限**：当前仓库如为 Private，以上匿名 Raw URL 会返回 404。先将仓库设置为 Public，或使用下文的 GitHub CLI 授权下载方式。**在运行通过网络下载的脚本前，建议先阅读 [install.sh](./install.sh)。**
-
-### 私有仓库的安装方式（已安装并登录 GitHub CLI）
+**注意：仓库如果仍为 Private，匿名访问 raw.githubusercontent.com 会返回 404；国内网络也可能无法连通 GitHub Raw。** 你可以通过可访问 GitHub 的电脑下载 [install.sh](./install.sh) 后通过 SCP 传到 VPS 执行，或在服务器已安装且登录 `gh` 的情况下运行：
 
 ```bash
-gh api -H 'Accept: application/vnd.github.raw+json' repos/krischan-ai/deepcode-debian-vps/contents/install.sh > /tmp/deepcode-install.sh
-bash /tmp/deepcode-install.sh
+gh api -H 'Accept: application/vnd.github.raw+json' repos/krischan-ai/deepcode-debian-vps/contents/install.sh?ref=china-mirrors > /tmp/deepcode-install-cn.sh
+bash /tmp/deepcode-install-cn.sh
 ```
 
-## 安装内容
+## 国内镜像配置
 
-- 更新 apt 软件索引，安装 `curl`、`git`、`python3`、`ca-certificates` 等基础组件
-- 安装 Node.js 22、npm 和 `@vegamo/deepcode-cli`
-- 创建 `~/.deepcode/settings.json` 并交互式读取 DeepSeek API Key（输入不回显）
-- 自动建立 `~/workspace` 并启动 `deepcode`
-- 可选安装 tmux 保持 SSH 断开后的终端会话
+| 用途 | 镜像 | 说明 |
+| --- | --- | --- |
+| Debian APT | 清华 TUNA | 自动将官方 Debian/安全更新源地址替换为清华镜像，保留其他第三方源 |
+| Node.js 22 | npmmirror | 下载最新 22.x 的 Linux 预编译压缩包并校验 SHA-256 |
+| npm 依赖 | npmmirror | 安装 `@vegamo/deepcode-cli` 时使用 `https://registry.npmmirror.com` |
+| DeepSeek API | 官方 | `https://api.deepseek.com`，模型 `deepseek-flash` |
 
-默认配置：
+安装前会将原有 APT 配置备份到 `/root/apt-sources-backup-时间戳/`。清华镜像的安全更新同步可能慢于 Debian 官方安全源，需要自行衡量同步延迟。Node.js/npm 和第三方包镜像也可能有同步延迟。
+
+## 配置及日常启动
+
+安装时交互式输入 DeepSeek API Key，密钥不回显，存储在 `~/.deepcode/settings.json`，文件权限为 `600`，**不会提交到 GitHub**。
 
 ```json
 {
@@ -41,33 +44,19 @@ bash /tmp/deepcode-install.sh
 }
 ```
 
-API Key **不会提交至 GitHub**。配置文件权限为 `600`，配置目录权限为 `700`。
-
-## 日常使用
+以后启动：
 
 ```bash
 cd ~/workspace
 deepcode
 ```
 
-编辑配置：`nano ~/.deepcode/settings.json`
+## 风险及排查
 
-可选 tmux：
+- `curl: (7)` 或 `curl: (28)`：镜像或 GitHub Raw 访问失败，确认网络连通性。
+- `404`：先检查仓库是否为 Public，以及所选文件路径和分支是否正确。
+- `npm ERR!`：可能是包在 npm 国内镜像尚未同步；可以手动切回官方 registry。
+- `model not found`：检查 API 服务实际支持的模型 ID。
+- 默认直接修改系统的 APT 源，请先检查 [install.sh](./install.sh)；生产环境建议快照备份后再运行。
 
-```bash
-apt-get install -y tmux
-tmux new -s deepcode
-cd ~/workspace && deepcode
-```
-
-在 tmux 中按 `Ctrl+B` 后按 `D` 分离会话；重新连接后运行 `tmux attach -t deepcode`。
-
-## 前提与注意事项
-
-- 目标系统：Debian 12/13，具有 root 或 sudo 管理权限；可联网访问 Debian、NodeSource 和 npm。
-- 安装脚本使用 `apt-get`，当前仅支持 Debian；非 root 用户会尝试通过 sudo 获取权限。
-- 如果已有 `~/.deepcode/settings.json`，脚本会先备份成带时间戳的文件再写入新配置。
-- 官方 DeepSeek API 于 2026-09-10 将最新 Flash 模型标识指定为 `deepseek-flash`（V4.1 Flash）。
-- 依赖和 CLI 来自第三方，安装前自行核实源及软件可信性。
-
-参考：[Deep Code CLI](https://www.npmjs.com/package/@vegamo/deepcode-cli) · [DeepSeek API 更新日志](https://api-docs.deepseek.com/zh-cn/updates/)
+参考：[清华 Debian 镜像帮助](https://mirrors.tuna.tsinghua.edu.cn/help/debian/) · [清华 Debian Security 镜像帮助](https://mirrors.tuna.tsinghua.edu.cn/help/debian-security/)
