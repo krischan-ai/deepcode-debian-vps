@@ -25,7 +25,7 @@ curl -fL --retry 3 -o /tmp/deepcode-install-cn.sh 'https://raw.githubusercontent
 | 安装环节 | 服务 |
 | --- | --- |
 | GitHub Raw 脚本下载 | [gh-proxy.com](https://gh-proxy.com/) |
-| Ubuntu APT 和安全更新 | [清华 TUNA Ubuntu 镜像](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/)（ARM ports 使用 ubuntu-ports） |
+| Ubuntu APT 和安全更新 | 中科大 USTC → 阿里云 → Ubuntu 官方自动回退（镜像切换仅适用于标准 `/ubuntu` 源） |
 | Node.js 22 二进制 | npmmirror（下载并校验 SHA-256） |
 | npm 包 | `https://registry.npmmirror.com` |
 | DeepSeek 模型 | 官方 API，`deepseek-flash` |
@@ -70,6 +70,19 @@ deepcode
 ```
 
 密钥仅在 VPS 本地输入，文件权限 `600`。注意 API 服务是否支持指定模型。
+
+## 清华镜像 403 Forbidden 的修复
+
+如果此前运行过旧脚本，APT 源可能仍指向清华镜像。新版脚本会将旧的清华 Ubuntu 路径切换为中科大，并在 `apt-get update` 失败时自动依次尝试阿里云、官方 Ubuntu 镜像，不关闭签名验证。
+
+也可以先手动修复：
+
+```bash
+grep -rlZ 'mirrors.tuna.tsinghua.edu.cn/ubuntu' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | xargs -0 -r sed -i 's#https://mirrors.tuna.tsinghua.edu.cn/ubuntu#https://mirrors.ustc.edu.cn/ubuntu#g'
+apt-get update
+```
+
+注意：`ubuntu-ports`（ARM ports）的镜像规则与普通 `ubuntu` 不同，本脚本暂不自动切换 ports 镜像；此类系统应根据原配置单独检查。每次执行脚本都会备份现有 APT 配置。
 
 ## 常见问题
 
