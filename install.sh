@@ -3,8 +3,8 @@ set -Eeuo pipefail
 
 if [[ ! -f /etc/os-release ]]; then echo "Cannot identify OS" >&2; exit 1; fi
 . /etc/os-release
-if [[ "${ID:-}" != "debian" || ( "${VERSION_ID:-}" != "12" && "${VERSION_ID:-}" != "13" ) ]]; then
-  echo "Debian 12 or 13 required." >&2; exit 1
+if [[ "${ID:-}" != "ubuntu" || ( "${VERSION_ID:-}" != "22.04" && "${VERSION_ID:-}" != "24.04" && "${VERSION_ID:-}" != "26.04" ) ]]; then
+  echo "Ubuntu 22.04, 24.04 or 26.04 required." >&2; exit 1
 fi
 if [[ "$EUID" -ne 0 ]]; then echo "Run as root: sudo bash install.sh" >&2; exit 1; fi
 
@@ -12,15 +12,16 @@ export DEBIAN_FRONTEND=noninteractive
 NODE_MIRROR="https://npmmirror.com/mirrors/node"
 NPM_REGISTRY="https://registry.npmmirror.com"
 
-echo "[1/5] Debian mirror and base packages"
+echo "[1/5] Ubuntu mirror and base packages"
 BACKUP_DIR="/root/apt-sources-backup-$(date +%Y%m%d%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 cp -a /etc/apt/sources.list "$BACKUP_DIR/" 2>/dev/null || true
 cp -a /etc/apt/sources.list.d "$BACKUP_DIR/" 2>/dev/null || true
 while IFS= read -r -d '' src; do
   sed -i -E \
-    -e 's#https?://(deb|ftp|security)[.]debian[.]org/debian-security/?#https://mirrors.tuna.tsinghua.edu.cn/debian-security/#g' \
-    -e 's#https?://(deb|ftp)[.]debian[.]org/debian/?#https://mirrors.tuna.tsinghua.edu.cn/debian/#g' "$src"
+    -e 's#https?://(archive|security)[.]ubuntu[.]com/ubuntu/?#https://mirrors.tuna.tsinghua.edu.cn/ubuntu/#g' \
+    -e 's#https?://[a-z0-9.-]+[.]archive[.]ubuntu[.]com/ubuntu/?#https://mirrors.tuna.tsinghua.edu.cn/ubuntu/#g' \
+    -e 's#https?://ports[.]ubuntu[.]com/ubuntu-ports/?#https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports/#g' "$src"
 done < <(find /etc/apt -maxdepth 2 -type f \( -name 'sources.list' -o -name '*.sources' -o -name '*.list' \) -print0)
 apt-get update
 apt-get install -y ca-certificates curl git xz-utils python3 nano build-essential
