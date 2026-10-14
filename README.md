@@ -1,19 +1,19 @@
-# Deep Code · 国内 Debian VPS 一键安装
+# Deep Code · 国内 Ubuntu VPS 一键安装
 
-本分支 `china-mirrors` 针对 **Debian 12/13**（x86_64、ARM64、armhf）国内服务器，默认模型 `deepseek-flash`。
+本分支 `ubuntu-china-mirrors` 基于 `china-mirrors`，针对 **Ubuntu 22.04 / 24.04 / 26.04**（x86_64、ARM64、armhf）国内服务器，默认模型 `deepseek-flash`。
 
 ## 一键安装（推荐 GitHub 加速）
 
 以 root 登录 VPS，复制整条命令：
 
 ```bash
-curl -fL --retry 3 -o /tmp/deepcode-install-cn.sh 'https://gh-proxy.com/https://raw.githubusercontent.com/krischan-ai/deepcode-debian-vps/china-mirrors/install.sh' && bash /tmp/deepcode-install-cn.sh
+curl -fL --retry 3 -o /tmp/deepcode-install-cn.sh 'https://gh-proxy.com/https://raw.githubusercontent.com/krischan-ai/deepcode-debian-vps/ubuntu-china-mirrors/install.sh' && bash /tmp/deepcode-install-cn.sh
 ```
 
 直连备用命令：
 
 ```bash
-curl -fL --retry 3 -o /tmp/deepcode-install-cn.sh 'https://raw.githubusercontent.com/krischan-ai/deepcode-debian-vps/china-mirrors/install.sh' && bash /tmp/deepcode-install-cn.sh
+curl -fL --retry 3 -o /tmp/deepcode-install-cn.sh 'https://raw.githubusercontent.com/krischan-ai/deepcode-debian-vps/ubuntu-china-mirrors/install.sh' && bash /tmp/deepcode-install-cn.sh
 ```
 
 **权限提醒：** 仓库必须是 **Public** 才能通过上述匿名 URL 获取脚本。Private 仓库不能简单通过公开加速站访问；不要向第三方代理传送 GitHub Token。如需保持 Private，可在已认证的电脑上下载脚本再使用 `scp` 上传至 VPS，或用已登录的 `gh api` 获取文件。
@@ -25,12 +25,12 @@ curl -fL --retry 3 -o /tmp/deepcode-install-cn.sh 'https://raw.githubusercontent
 | 安装环节 | 服务 |
 | --- | --- |
 | GitHub Raw 脚本下载 | [gh-proxy.com](https://gh-proxy.com/) |
-| Debian APT 和安全更新 | [清华 TUNA](https://mirrors.tuna.tsinghua.edu.cn/help/debian/) |
+| Ubuntu APT 和安全更新 | [清华 TUNA Ubuntu 镜像](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/)（ARM ports 使用 ubuntu-ports） |
 | Node.js 22 二进制 | npmmirror（下载并校验 SHA-256） |
 | npm 包 | `https://registry.npmmirror.com` |
 | DeepSeek 模型 | 官方 API，`deepseek-flash` |
 
-脚本会备份原 APT 源到 `/root/apt-sources-backup-时间戳/`，安装基础工具、Node.js 和 Deep Code，提示交互式输入 API Key，然后启动 `deepcode`。
+脚本会备份原 APT 源（兼容传统 `sources.list` 与 Ubuntu 24.04+ 的 `ubuntu.sources`）到 `/root/apt-sources-backup-时间戳/`，安装基础工具、Node.js 和 Deep Code，提示交互式输入 API Key，然后启动 `deepcode`。
 
 ## GitHub 下载和克隆加速
 
