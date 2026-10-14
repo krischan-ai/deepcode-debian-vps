@@ -17,13 +17,35 @@ BACKUP_DIR="/root/apt-sources-backup-$(date +%Y%m%d%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 cp -a /etc/apt/sources.list "$BACKUP_DIR/" 2>/dev/null || true
 cp -a /etc/apt/sources.list.d "$BACKUP_DIR/" 2>/dev/null || true
-while IFS= read -r -d '' src; do
-  sed -i -E \
-    -e 's#https?://(archive|security)[.]ubuntu[.]com/ubuntu/?#https://mirrors.tuna.tsinghua.edu.cn/ubuntu/#g' \
-    -e 's#https?://[a-z0-9.-]+[.]archive[.]ubuntu[.]com/ubuntu/?#https://mirrors.tuna.tsinghua.edu.cn/ubuntu/#g' \
-    -e 's#https?://ports[.]ubuntu[.]com/ubuntu-ports/?#https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports/#g' "$src"
-done < <(find /etc/apt -maxdepth 2 -type f \( -name 'sources.list' -o -name '*.sources' -o -name '*.list' \) -print0)
-apt-get update
+
+# Only Ubuntu distribution mirror URLs are changed. Third-party repos remain intact.
+# Try USTC, Aliyun, then Ubuntu official; do not bypass apt signature checks.
+set_ubuntu_mirror() {
+  local endpoint="$1"
+  local source
+  while IFS= read -r -d '' source; do
+    sed -i -E \
+      -e "s#https?://(archive|security)[.]ubuntu[.]com/ubuntu/?#${endpoint}/ubuntu/#g" \
+      -e "s#https?://[a-z0-9.-]+[.]archive[.]ubuntu[.]com/ubuntu/?#${endpoint}/ubuntu/#g" \
+      -e "s#https?://(mirrors[.]tuna[.]tsinghua[.]edu[.]cn|mirrors[.]ustc[.]edu[.]cn|mirrors[.]aliyun[.]com)/ubuntu/?#${endpoint}/ubuntu/#g" \
+      "$source"
+  done < <(find /etc/apt -maxdepth 2 -type f \( -name 'sources.list' -o -name '*.sources' -o -name '*.list' \) -print0)
+}
+APT_READY=false
+for mirror in "https://mirrors.ustc.edu.cn" "https://mirrors.aliyun.com" "http://archive.ubuntu.com"; do
+  echo "Trying APT mirror: $mirror"
+  set_ubuntu_mirror "$mirror"
+  if apt-get update; then
+    APT_READY=true
+    echo "APT mirror ready: $mirror"
+    break
+  fi
+  echo "APT mirror unavailable, trying next candidate..."
+done
+if [[ "$APT_READY" != "true" ]]; then
+  echo "All Ubuntu mirrors failed. Backup: $BACKUP_DIR" >&2
+  exit 1
+fi
 apt-get install -y ca-certificates curl git xz-utils python3 nano build-essential
 
 echo "[2/5] Download and verify Node.js 22"
